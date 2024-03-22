@@ -1,24 +1,26 @@
 import json
+import time
+
 import pandas as pd
 from shapely.geometry import Point, Polygon
 from shapely.geometry import Point, LineString, shape
 from sqlalchemy import create_engine
 from pypinyin import lazy_pinyin
 
-engine = create_engine('mysql+pymysql://sys_admin:Mysql_2024!@192.168.4.181/public_interface')
+engine = create_engine('mysql+pymysql://sys_admin:Mysql_2023!@10.26.39.12/public_interface')
 import os
 import datetime
 
 
 def load_point_sqlserver():
-    query = "select creditcode,longitude,latitude,unitaddress from public_interface.temp_credit_lonlat where status = 0"
+    query = "select location,longitude,latitude from public_interface.ct_addr_location_label where status = 0"
     result = pd.read_sql(query, engine)
     return result
 
 
-def update(shqk, wcghxq, zscyy, wcgyy, znzzcyy, creditcode):
-    query = "update public_interface.temp_credit_lonlat set shqk = {}, wcghxq ={}, zscyy = {} ,wcgyy={},znzzcyy ={}  WHERE creditcode = {}" \
-        .format(shqk, wcghxq, zscyy, wcgyy, znzzcyy, creditcode)
+def update(location):
+    query = "update public_interface.ct_addr_location_label set status = 1 where location = '{}'" \
+        .format(location)
     engine.execute(query)
 
 
@@ -37,31 +39,16 @@ def check_point_in_range_geojson(longitude, latitude, geojson):
     # 遍历所有特性
     for feature in geojson["features"]:
         # 获取多边形坐标
+        # polygon = Polygon(feature["geometry"]["coordinates"])
+        # print(feature["geometry"]["coordinates"])
+        polygon = Polygon(feature["geometry"]["coordinates"][0])
 
-        polygon = Polygon(feature["geometry"]["coordinates"])
         # 判断坐标点是否在当前多边形内
         if polygon.contains(point):
             return 1
 
     # 若遍历了所有多边形仍未找到包含此点的多边形，则返回9
     return 9
-
-
-def check_point_in_range_json(x, y):
-    with open('data2.json') as f:
-        geojson_data = json.load(f)
-    # 指定坐标点
-    point = Point(x, y)
-
-    # 取出线段坐标
-    coordinates = geojson_data[0]["geometry"]["coordinates"]
-    line = Polygon(coordinates)
-
-    # 判断坐标点是否在范围内
-    if line.contains(point):
-        return "在范围内"
-    else:
-        return "不在范围内"
 
 
 def get_geojson_files(folder_path):
@@ -81,16 +68,13 @@ def get_geojson_files(folder_path):
     return file_paths, file_names, file_real_names
 
 
-if __name__ == '__main__':
-    # geojson = read_geojson('图片文件/地图geojson/5鄞州分园\东部新城\东部新城.geojson')
-    # check = check_point_in_range_geojson('121.61977519','29.96936002',geojson)
-    # print(check)
-
-    # 指定地图 GeoJSON 文件夹路径
-    folder_path = "图片文件/地图geojson"
+def run():
+    folder_path = "图片文件/new"
+    # folder_path = "/home/nbippc/geojson"
 
     # 调用函数获取所有的 GeoJSON 文件路径和文件名称
     geojson_files, geojson_names, file_real_names = get_geojson_files(folder_path)
+    print(geojson_names)
 
     print('读取数据中')
     result = load_point_sqlserver()
@@ -111,12 +95,12 @@ if __name__ == '__main__':
         print("文件名称: ", file_real_names[i])
         print("文件名称缩写: ", geojson_names[i])
         column_comments.append(file_real_names[i])
-        column_definition = f"{str(geojson_names[i]).replace(' ', '')} int COMMENT '{file_real_names[i]}'"
+        column_definition = f"{str(file_real_names[i]).replace(' ', '')} int COMMENT '{file_real_names[i]}'"
         columns_definition.append(column_definition)
 
         loop_start_time = datetime.datetime.now()  # 记录此次循环的开始时间
 
-        result[str(geojson_names[i]).replace(' ', '')] = result.apply(
+        result[str(file_real_names[i]).replace(' ', '')] = result.apply(
             lambda row: check_point_in_range_geojson(row['longitude'], row['latitude'], geojson),
             axis=1)
 
@@ -134,13 +118,28 @@ if __name__ == '__main__':
     column_names = result.columns.tolist()
 
     # 构建完整的 CREATE TABLE 语句
-    table_name = 'temp_credit_lonlat_result5'
+    table_name = 'temp_credit_lonlat_result2'
     create_table_sql = f"CREATE TABLE {table_name} ({', '.join(columns_definition)})"
 
-    # 执行 CREATE TABLE 语句
-    with engine.connect() as connection:
-        connection.execute(create_table_sql)
     print(create_table_sql)
+    # 执行 CREATE TABLE 语句
+    # with engine.connect() as connection:
+    #     connection.execute(create_table_sql)
     print('插入数据')
     result.to_sql(name=table_name, con=engine, if_exists='append', index=False)
     print('插入完毕')
+
+    # 更新状态
+    for index, row in result.iterrows():
+        update(str(row['location']))
+    print('更新完毕')
+    time.sleep(5)
+
+
+if __name__ == '__main__':
+    # geojson = read_geojson('图片文件/new/YJKC01.geojson')
+    # check = check_point_in_range_geojson('121.620275', '29.892255', geojson)
+    # print(check)
+    run()
+    # 指定地图 GeoJSON 文件夹路径
+    # folder_path = "/home/nbippc/geojson"

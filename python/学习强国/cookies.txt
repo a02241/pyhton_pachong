@@ -1,0 +1,6 @@
+{'domain': '.xuexi.cn', 'expiry': 1710399596, 'httpOnly': False, 'name': 'tmzw', 'path': '/', 'sameSite': 'Lax', 'secure': False, 'value': '1710313196025'}
+{'domain': '.xuexi.cn', 'expiry': 1710356548, 'httpOnly': False, 'name': 'token', 'path': '/', 'sameSite': 'Lax', 'secure': False, 'value': '61602c92f69b4d29863533bbad67279d'}
+{'domain': '.xuexi.cn', 'expiry': 1737774582, 'httpOnly': False, 'name': '__UID__', 'path': '/', 'sameSite': 'Lax', 'secure': True, 'value': '5992a3d0-bbf8-11ee-aea5-cdbadda39c16'}
+{'domain': '.xuexi.cn', 'expiry': 1710399673, 'httpOnly': False, 'name': 'y-open-did', 'path': '/', 'sameSite': 'Lax', 'secure': False, 'value': '1e27ef44bad44b240d32ce4f'}
+{'domain': '.xuexi.cn', 'expiry': 1710399596, 'httpOnly': False, 'name': 'zwfigprt', 'path': '/', 'sameSite': 'Lax', 'secure': False, 'value': 'ae51ab9cc0f934f2e080d1a53423e53d'}
+{'domain': '.xuexi.cn', 'expiry': 1710399673, 'httpOnly': False, 'name': 'y-open-ua', 'path': '/', 'sameSite': 'Lax', 'secure': False, 'value': 'TorchApp%252F1.0%2520OSType%252FWindows%2520XueXi%252F2.19.0%2520Device%252Fxxqgpc%2520Windows%252F10(Windows%253Bzh-CN)%2520lang%252Fzh-CN%2520pc.js%252F1706580237911%2520Scene%252Fpc'}
