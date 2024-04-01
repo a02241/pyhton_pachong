@@ -1,6 +1,8 @@
 import random
 import time
 from time import sleep
+
+import logger
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
@@ -138,7 +140,7 @@ def click_on_random_span(driver):
                 driver = click(driver)
                 driver = look_or_watch(driver)
     else:
-        print("没有找到符合条件的 span 元素,正在重新打开重要新闻")
+        logger.logger.info("没有找到符合条件的 span 元素,正在重新打开重要新闻")
         driver = back_windows(driver, 0)
         driver.execute_script(f"window.scrollBy(0, {200});")
         time.sleep(5)
@@ -176,19 +178,33 @@ def look_or_watch(driver):
     global sp_count
     # 判断元素是否存在
     try:
-        element = driver.find_element('css selector', '[class*="prism-big-play-btn"]')
+        elements = driver.find_elements('css selector', '[class*="prism-big-play-btn"]')
         # element = driver.find_element('css selector', 'div.outter')
-        if element is not None:
-            if sp_count < 12:
-                element.click()
-                print('点击了视频,观看63S')
-                time.sleep(63)
-                sp_count += 1
-            else:
-                print('观看视频次数达到')
+        if len(elements) > 0:
+            for element in elements:
+                if element is not None:
+                    if sp_count < 12:
+                        element.click()
+                        logger.logger.info('点击了视频,观看63S')
+                        time.sleep(63)
+                        sp_count += 1
+                    else:
+                        logger.logger.info('观看视频次数达到')
+                else:
+                    if yd_count < 12:
+                        logger.logger.info('识别阅读-----阅读75秒')
+                        page_height = driver.execute_script("return document.documentElement.scrollHeight")
+                        scroll_distance = int(page_height / 5)
+                        # 下拉5次
+                        for _ in range(15):
+                            driver.execute_script(f"window.scrollBy(0, {scroll_distance});")
+                            time.sleep(5)
+                        yd_count += 1
+                    else:
+                        logger.logger.info('阅读次数达到')
         else:
             if yd_count < 12:
-                print('识别阅读-----阅读75秒')
+                logger.logger.info('识别阅读-----阅读75秒')
                 page_height = driver.execute_script("return document.documentElement.scrollHeight")
                 scroll_distance = int(page_height / 5)
                 # 下拉5次
@@ -197,10 +213,10 @@ def look_or_watch(driver):
                     time.sleep(5)
                 yd_count += 1
             else:
-                print('阅读次数达到')
+                logger.logger.info('阅读次数达到')
     except:
         if yd_count < 12:
-            print('识别阅读-----阅读75秒')
+            logger.logger.info('识别阅读-----阅读75秒')
             page_height = driver.execute_script("return document.documentElement.scrollHeight")
             scroll_distance = int(page_height / 5)
             # 下拉5次
@@ -209,7 +225,7 @@ def look_or_watch(driver):
                 time.sleep(5)
             yd_count += 1
         else:
-            print('阅读次数达到')
+            logger.logger.info('阅读次数达到')
     return driver
 
 
@@ -228,13 +244,13 @@ def check_score(driver):
     try:
         wz = wait.until(EC.presence_of_element_located((By.CLASS_NAME, 'my-points-card-text')))
     except TimeoutException:
-        print("页面加载超时")
+        logger.logger.info("页面加载超时")
     current_url = driver.current_url
-    print("当前URL:", current_url)
+    logger.logger.info("当前URL:{}".format(current_url))
     wenzhang = driver.find_elements(By.CLASS_NAME, 'my-points-card-text')
     wenzhang_count = 1
     for i in wenzhang:
-        print(i.text)
+        logger.logger.info(i.text)
         if '/' in i.text:
             scores = re.findall(r'\d+', i.text)
             if len(scores) == 2:
@@ -243,12 +259,12 @@ def check_score(driver):
                 if wenzhang_count == 3:
                     sp_count = int(scores[0])
         wenzhang_count = wenzhang_count + 1
-    print("阅读分数:", yd_count)
-    print("视频分数:", sp_count)
+    logger.logger.info("阅读分数:{}".format(yd_count))
+    logger.logger.info("视频分数:{}".format(sp_count))
     while True:
         new_url = driver.current_url
         if 'login.html' in new_url:
-            print('请扫码')
+            logger.logger.info('请扫码')
             time.sleep(10)
         else:
             write_cookie(driver)
@@ -268,15 +284,15 @@ def sbxh(driver):
         time.sleep(5)
         count = 1
         while yd_count < 12 or sp_count < 12:
-            print('阅读次数{}'.format(yd_count))
-            print('视频次数{}'.format(sp_count))
+            logger.logger.info('阅读次数{}'.format(yd_count))
+            logger.logger.info('视频次数{}'.format(sp_count))
             # if (yd_count >= 12 and sp_count > 10) or (sp_count >= 12 and yd_count > 10):
             #     check_score(driver)
             #     if yd_count == 12 and sp_count == 12:
-            #         print('-----finish-------')
+            #         logger.logger.info('-----finish-------')
             #         break
             new_url = driver.current_url
-            print("跳转后的页面 URL：", new_url)
+            logger.logger.info("跳转后的页面 URL：{}".format(new_url))
             if str(new_url).__eq__('https://www.xuexi.cn/'):
                 okBtn = driver.find_elements(By.CSS_SELECTOR, "dev[class='okBtn']")
                 if okBtn:
@@ -284,15 +300,15 @@ def sbxh(driver):
                     # okBtn.click()
                     # try:
                     #     driver = back_windows(driver, 0)
-                    #     print('点击确认--------------')
+                    #     logger.logger.info('点击确认--------------')
                     # except:
                     #     pass
                 count = count + 1
                 time.sleep(2)
                 driver = click(driver)
-                print('重新点击')
+                logger.logger.info('重新点击')
                 if count > 3:
-                    print('重新跳转')
+                    logger.logger.info('重新跳转')
                     driver.get('https://www.xuexi.cn/')
                     driver.refresh()
                     driver = last_page_size(driver, count_size % 20)
@@ -317,19 +333,19 @@ def sbxh(driver):
                     pass
                 time.sleep(1)
                 break
-        if count_size % 20 == 0:
+        if count_size % 50 == 0:
             scroll_script = f"window.scrollBy(0, -1000);"
-            print('重新拉取')
-            # 获取分数
-            check_score(driver)
+            logger.logger.info('重新拉取')
+            # # 获取分数
+            # check_score(driver)
         count_size += 1
         if yd_count == 12 and sp_count == 12:
-            print('-----finish-------')
+            logger.logger.info('-----finish-------')
             break
         # if yd_count >= 12 or sp_count >= 12:
     #     check_score(driver)
     #   if yd_count == 12 and sp_count == 12:
-    #        print('-----finish-------')
+    #        logger.logger.info('-----finish-------')
     #       break
     # if count_size > 200:
     #     count_size = 0
@@ -339,7 +355,7 @@ def sbxh(driver):
 
 def write_cookie(driver):
     cookies = driver.get_cookies()
-    print(cookies)
+    logger.logger.info(cookies)
     filtered_cookies = [cookie for cookie in cookies if cookie['domain'] != 'pc.xuexi.cn']
     with open('cookies.txt', 'w') as file:
         for cookie in filtered_cookies:
@@ -375,7 +391,7 @@ def run():
         if (yd_count >= 12 and sp_count > 10) or (sp_count >= 12 and yd_count > 10):
             check_score(driver)
             if yd_count >= 12 and sp_count >= 12:
-                print('分数达到，休眠3小时')
+                logger.logger.info('分数达到，休眠3小时')
                 time.sleep(3 * 60 * 60)
     driver.quit()
 
