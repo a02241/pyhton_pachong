@@ -69,16 +69,16 @@ def get_geojson_files(folder_path):
 
 
 def run():
-    folder_path = "图片文件/new"
-    # folder_path = "/home/nbippc/geojson"
+    # folder_path = "图片文件/new"
+    folder_path = "/home/nbippc/geojson"
 
     # 调用函数获取所有的 GeoJSON 文件路径和文件名称
     geojson_files, geojson_names, file_real_names = get_geojson_files(folder_path)
-    print(geojson_names)
+    # print(geojson_names)
 
     print('读取数据中')
     result = load_point_sqlserver()
-    print('读取数据完毕')
+    print('读取数据完毕,数据量{}'.format(result.count()))
     # 打印所有的 GeoJSON 文件路径
     column_comments = ['creditcode', '经度', '维度', '地址']  # 填入字段的注释信息
     # 获取 DataFrame 的字段名称和注释
@@ -118,7 +118,7 @@ def run():
     column_names = result.columns.tolist()
 
     # 构建完整的 CREATE TABLE 语句
-    table_name = 'temp_credit_lonlat_result2'
+    table_name = 'temp_credit_lonlat_result'
     create_table_sql = f"CREATE TABLE {table_name} ({', '.join(columns_definition)})"
 
     print(create_table_sql)
