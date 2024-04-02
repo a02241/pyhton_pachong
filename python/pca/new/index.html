@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Upload File</title>
+</head>
+<body>
+    <h1>上传带预测文件</h1>
+    <form id="upload-form" method="POST" enctype="multipart/form-data" action="/upload">
+        <input type="file" name="file">
+        <input type="submit" value="上传预测结果">
+    </form>
+
+    <script>
+        window.onload = function () {
+            const form = document.getElementById('upload-form');
+
+            form.addEventListener('submit', function (event) {
+                event.preventDefault();
+
+                const fileInput = document.querySelector('input[type=file]');
+                const file = fileInput.files[0];
+
+                const formData = new FormData();
+                formData.append('file', file);
+
+                fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => {
+                    if (response.ok) {
+                        return response.blob();
+                    } else {
+                        throw new Error('Upload failed');
+                    }
+                })
+                .then(blob => {
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = 'result.xlsx';
+                    link.click();
+                })
+                .catch(error => {
+                    console.error(error);
+                });
+            });
+        };
+    </script>
+</body>
+</html>
