@@ -1,15 +1,17 @@
-from sklearn.impute import SimpleImputer
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report, accuracy_score
 from flask import render_template
 import os
 from flask import Flask, request, send_file
-import pandas as pd
+from sklearn.impute import SimpleImputer
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report, accuracy_score, confusion_matrix, roc_curve, auc
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.ensemble import RandomForestClassifier
 import joblib
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 # 实例化 Flask 应用，设置模板文件夹为当前文件目录
 app = Flask(__name__, template_folder=os.path.dirname(__file__))
@@ -49,6 +51,7 @@ def home():
 
 # 定义文件处理函数
 def process_file(file_path):
+    print('正在加载模型')
     # 加载训练好的欺诈检测模型
     model = joblib.load('./fraud_detection_model.pkl')
 
@@ -61,33 +64,8 @@ def process_file(file_path):
     # 分离出用于模型预测的特征集合
     X_test = df_test.drop(columns=['RES'])
 
-    # 数值特征的预处理步骤
-    numeric_features = X_test.select_dtypes(include=['int64', 'float64']).columns
-    numeric_transformer = Pipeline(steps=[
-        ('scaler', StandardScaler())  # 数值标准化
-    ])
-
-    # 分类特征的预处理步骤
-    categorical_features = X_test.select_dtypes(include=['object']).columns
-    categorical_transformer = Pipeline(steps=[
-        ('encoder', OneHotEncoder(handle_unknown='ignore'))  # 分类编码
-    ])
-
-    # 构建列转换处理器，为不同类型特征应用不同的处理
-    preprocessor = ColumnTransformer(
-        transformers=[
-            ('num', numeric_transformer, numeric_features),
-            ('cat', categorical_transformer, categorical_features)
-        ])
-
-    # 对测试数据应用预处理步骤
-    X_test_preprocessed = preprocessor.fit_transform(X_test)
-
-    # 将预处理后的数据转换成DataFrame格式，以便进行预测
-    X_test_preprocessed_df = pd.DataFrame(X_test_preprocessed, columns=X_test.columns)
-
     # 使用模型进行预测
-    y_pred = model.predict(X_test_preprocessed_df)
+    y_pred = model.predict(X_test)
 
     # 将预测结果添加到测试数据DataFrame中
     df_test['预测是否欺诈'] = y_pred
@@ -95,75 +73,101 @@ def process_file(file_path):
     # 保存带有预测结果的文件
     result_file_path = os.path.join('./results', 'result.xlsx')
     df_test.to_excel(result_file_path, index=False)
-
+    print('模型预测完毕')
     # 返回结果文件的路径
     return result_file_path
 
-
+# 设置全局字体为系统内置字体
+plt.rcParams['font.family'] = 'Microsoft YaHei'  # 指定字体为微软雅黑,可以根据自己的系统和字体库选择合适的字体
+plt.rcParams['axes.unicode_minus'] = False  # 解决负号显示问题
 def run_model():
-    # 第1步：加载数据
-    df = pd.read_csv('./【东软集团A08】医保特征数据16000（修订版2）.csv', encoding='utf-8')
+    # 第1步:加载数据
+    df = pd.read_csv('./【东软集团A08】医保特征数据16000（修订版）.csv', encoding='utf-8')
     imputer = SimpleImputer(strategy='mean')
     df = pd.DataFrame(imputer.fit_transform(df), columns=df.columns)
-    # 第2步：数据探索
-    # 查看数据的前几行进行初步探索
-    print(df.head())
 
-    # 检查数据集的大小和缺失值情况
+    # 第2步:数据探索
+    print(df.head())
     print(df.shape)
     print(df.isnull().sum())
 
-    # 第3步：数据预处理
-    # 删除不需要的列，例如'个人编码'（作为ID的列通常对模型的预测作用不大）
+    # 第3步:数据预处理
     df.drop(columns=['个人编码'], inplace=True)
+    X = df.drop(columns=['RES'])
+    y = df['RES']
 
-    # 分离特征和目标变量
-    X = df.drop(columns=['RES'])  # 特征变量
-    y = df['RES']  # 目标变量
-
-    # 数值数据的处理
-    numeric_features = X.select_dtypes(include=['int64', 'float64']).columns  # 选择数值型特征
+    numeric_features = X.select_dtypes(include=['int64', 'float64']).columns
     numeric_transformer = Pipeline(steps=[
-        ('scaler', StandardScaler())  # 标准化处理
+        ('scaler', StandardScaler())
     ])
 
-    # 分类型数据的处理，例如'出院诊断病种名称_NN'为分类数据，但注意观察数据是否需要处理
-    categorical_features = X.select_dtypes(include=['object']).columns  # 选择分类特征
+    categorical_features = X.select_dtypes(include=['object']).columns
     categorical_transformer = Pipeline(steps=[
-        ('encoder', OneHotEncoder(handle_unknown='ignore'))  # one-hot编码处理
+        ('encoder', OneHotEncoder(handle_unknown='ignore'))
     ])
 
-    # 第4步：特征工程
-    # 构建预处理转换器，这里我们搭建了一个包含数值数据和分类数据处理的管道
+    # 第4步:特征工程
     preprocessor = ColumnTransformer(
         transformers=[
             ('num', numeric_transformer, numeric_features),
             ('cat', categorical_transformer, categorical_features)
         ])
 
-    # 第5步：构建模型
-    # 定义随机森林模型
+    # 第5步:构建模型
     model = Pipeline(steps=[
         ('preprocessor', preprocessor),
         ('classifier', RandomForestClassifier(random_state=42))
     ])
 
-    # 第6步：模型训练与评估
-    # 分割数据集为训练集和测试集
+    # 第6步:模型训练与评估
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-    # 拟合模型
     model.fit(X_train, y_train)
-
-    # 在测试集上做预测
     y_pred = model.predict(X_test)
 
-    # 输出模型评估报告
-    print("Accuracy:", accuracy_score(y_test, y_pred))
-    print("Classification Report:\n", classification_report(y_test, y_pred))
+    print("准确率:", accuracy_score(y_test, y_pred))
+    print("分类报告:\n", classification_report(y_test, y_pred))
 
-    # 第7步：模型保存
-    # 将模型保存到本地文件
+    # 绘制特征重要性图
+    feature_importances = model.named_steps['classifier'].feature_importances_
+    feature_names = X.columns
+
+    plt.figure(figsize=(10, 15))
+    plt.barh(range(len(feature_importances)), feature_importances, align='center')
+    plt.yticks(range(len(feature_names)), feature_names)
+    plt.xlabel('特征重要性')
+    plt.ylabel('特征')
+    plt.title('特征重要性图')
+    plt.tight_layout()
+    plt.savefig('feature_importance.png')
+    plt.show()
+
+    # 绘制混淆矩阵
+    cm = confusion_matrix(y_test, y_pred)
+
+    plt.figure(figsize=(8, 6))
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
+    plt.xlabel('预测标签')
+    plt.ylabel('真实标签')
+    plt.title('混淆矩阵')
+    plt.savefig('confusion_matrix.png')
+    plt.show()
+
+    # 绘制ROC曲线和AUC值
+    y_pred_proba = model.predict_proba(X_test)[:, 1]
+    fpr, tpr, thresholds = roc_curve(y_test, y_pred_proba)
+    roc_auc = auc(fpr, tpr)
+
+    plt.figure(figsize=(8, 6))
+    plt.plot(fpr, tpr, label=f'AUC = {roc_auc:.2f}')
+    plt.plot([0, 1], [0, 1], 'k--')
+    plt.xlabel('假正率')
+    plt.ylabel('真正率')
+    plt.title('ROC曲线')
+    plt.legend(loc='lower right')
+    plt.savefig('roc_curve.png')
+    plt.show()
+
+    # 第7步:模型保存
     joblib.dump(model, './fraud_detection_model.pkl')
 
 
