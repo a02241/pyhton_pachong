@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>医疗保险欺诈检测模型</title>
+</head>
+<body>
+  <h1>医疗保险欺诈检测模型</h1>
+  <p>此模型用于检测医疗保险索赔中的欺诈行为。要运行模型，请按照以下步骤操作：</p>
+  <ol>
+    <li>输入包含医疗保险索赔数据的 CSV 字符串。</li>
+    <li>输入模型名称。这将是保存训练模型的文件夹的名称。</li>
+    <li>输入随机状态。这将用于随机拆分数据集。</li>
+    <li>输入测试集大小。这将用于确定用于训练和测试模型的数据量。</li>
+    <li>选择缺失值处理策略。这将用于处理数据中的缺失值。</li>
+    <li>单击“运行模型”按钮。</li>
+  </ol>
+  <form id="model-form">
+    <label for="data-input">数据字符串：</label>
+    <textarea id="data-input" rows="10" cols="50"></textarea>
+    <br>
+    <label for="model-name-input">模型名称：</label>
+    <input type="text" id="model-name-input">
+    <br>
+    <label for="random-state-input">随机状态：</label>
+    <input type="number" id="random-state-input" value="42">
+    <br>
+    <label for="test-size-input">测试集大小：</label>
+    <input type="number" id="test-size-input" value="0.2">
+    <br>
+    <label for="missing-value-strategy-input">缺失值处理策略：</label>
+    <select id="missing-value-strategy-input">
+      <option value="mean">均值</option>
+      <option value="median">中位数</option>
+      <option value="most_frequent">最常出现的值</option>
+    </select>
+    <br>
+    <button type="submit">运行模型</button>
+  </form>
+  <div id="result"></div>
+  <script>
+    const runModel = async (data, model_name, random_state, test_size, missing_value_strategy) => {
+      try {
+        const file = new File([data], 'data.csv', { type: 'text/csv' });
+        const formData = new FormData();
+        formData.append('file_path', file);
+        formData.append('model_name', model_name);
+        formData.append('random_state', random_state);
+        formData.append('test_size', test_size);
+        formData.append('missing_value', missing_value_strategy);
+
+        const response = await fetch('/run_model', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+
+          if (result.code === 200) {
+            // 模型运行成功，显示响应数据
+            document.getElementById('result').innerHTML = JSON.stringify(result.data, null, 2);
+          } else {
+            // 模型运行失败，显示错误信息
+            alert(result.message);
+          }
+        } else {
+          // 处理网络或服务器错误
+          alert('模型运行出错，请稍后再试。');
+        }
+      } catch (error) {
+        // 处理网络或服务器错误
+        alert('模型运行出错，请稍后再试。');
+      }
+    };
+
+    const form = document.getElementById('model-form');
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+
+      const data = document.getElementById('data-input').value;
+      const model_name = document.getElementById('model-name-input').value;
+      const random_state = parseInt(document.getElementById('random-state-input').value);
+      const test_size = parseFloat(document.getElementById('test-size-input').value);
+      const missing_value_strategy = document.getElementById('missing-value-strategy-input').value;
+
+      runModel(data, model_name, random_state, test_size, missing_value_strategy);
+    });
+  </script>
+</body>
+</html>
